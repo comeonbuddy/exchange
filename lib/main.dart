@@ -1,3 +1,6 @@
+
+import './blocs/bloc_provider.dart';
+import './blocs/bloc.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -80,6 +83,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    print("4");
+    final StateBloc appBloc = BlocProvider.of<StateBloc>(context);
+    print("5");
     return Scaffold(
       backgroundColor: const Color(0xFFF0F0F0),
       body: GestureDetector(
@@ -102,27 +108,33 @@ class _MyHomePageState extends State<MyHomePage> {
                 color: const Color(0xFF464646),
               ),
             ),
-            GridView.builder(
-              itemCount: currencies.length,
-              shrinkWrap: true,
-              primary: false,
-              padding: const EdgeInsets.all(20),
-              gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 28.0,
-                childAspectRatio: 0.65,
-              ),
-              itemBuilder: (BuildContext context, int index) {
-                if (exchangeRate != null) {
-                  double convertedValue = value *
-                      exchangeRate["rates"][currencies[index].toUpperCase()];
-                  return CurrencyBox(convertedValue, currencies[index],
-                      (_value, _index) => setValue(_value, _index), index);
-                } else {
-                  print("no exchange rate in state");
-                }
-              },
-            ),
+//            StreamBuilder<double>(
+//              stream: appBloc.usdValue,
+//              initialData: 1,
+//              builder: (context, snapshot) => GridView.builder(
+//                itemCount: currencies.length,
+//                shrinkWrap: true,
+//                primary: false,
+//                padding: const EdgeInsets.all(20),
+//                gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
+//                  crossAxisCount: 2,
+//                  crossAxisSpacing: 28.0,
+//                  childAspectRatio: 0.65,
+//                ),
+//                itemBuilder: (BuildContext context, int index) {
+//                  if (exchangeRate != null) {
+//                    print(snapshot.data);
+//                    double convertedValue = snapshot.data *
+//                        exchangeRate["rates"][currencies[index].toUpperCase()];
+//                    return CurrencyBox(convertedValue, currencies[index],
+//                            (_value, _index) => setValue(_value, _index), index);
+//                  } else {
+//                    print("no exchange rate in state");
+//                  }
+//                },
+//              ),
+//            ),
+
             Container(
               height: 80.0,
             ),
@@ -160,6 +172,9 @@ class CurrencyBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+//    final Bloc appBloc = BlocProvider.of<Bloc>(context);
+
     myController.text = '${value.toStringAsFixed(1)}';
 //    myController.text = '${value}';
 
@@ -198,8 +213,12 @@ class CurrencyBox extends StatelessWidget {
 //                print("changed to $text");
 //                this.onValueChange(text, index);
 //              },
-              onSubmitted: (value) {
-                this.onValueChange(value, index);
+//              onSubmitted: (value) {
+//                this.onValueChange(value, index);
+//              },
+
+              onSubmitted: (value){
+//                appBloc.valueChanged.add(double.parse(value));
               },
 
               controller: myController,
