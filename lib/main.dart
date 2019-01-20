@@ -1,14 +1,20 @@
-
+import 'package:exchange/loading.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import './blocs/bloc_provider.dart';
 import './blocs/bloc.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'settings.dart';
 
 FocusNode _nodeText1 = FocusNode();
 
-void main() => runApp(MyApp());
+Future<void> main() async{
+  return runApp(
+    BlocProvider<StateBloc>(
+        child: MyApp(),
+        bloc: StateBloc(),
+    ),
+  );
+}
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -23,63 +29,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
   final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
   var currencies;
-  var allCurrencies = [];
-  double value;
-  var exchangeRate;
-
-  Future fetchRates() async {
-    final response =
-        await http.get('https://api.exchangeratesapi.io/latest?base=USD');
-    print("waiting...");
-    if (response.statusCode == 200) {
-      print("got response");
-      print(response.body);
-      setState(() {
-        exchangeRate = json.decode(response.body);
-      });
-
-      var items = exchangeRate["rates"] as Map;
-      for (var key in items.keys) {
-        setState(() {
-          allCurrencies.add(key.toLowerCase());
-        });
-      }
-      print(allCurrencies);
-    } else {
-      throw Exception('cant get exchange rates');
-    }
-  }
-
-  void setValue(_value, _index) {
-    setState(() {
-      print("setState called with ${_value}");
-      value = double.parse(_value) /
-          exchangeRate["rates"][currencies[_index].toUpperCase()];
-      print("setState finished");
-    });
-  }
-
-  @override
-  void initState() {
-    print("1");
-    currencies = ["aud", "cny"];
-    value = 1;
-    print("2");
-    fetchRates();
-    super.initState();
-    print("3");
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,38 +56,51 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => Settings(allCurrencies, currencies)));
+                          builder: (context) => Settings()));
                 },
                 alignment: Alignment(0.95, 0.5),
                 color: const Color(0xFF464646),
               ),
             ),
-//            StreamBuilder<double>(
-//              stream: appBloc.usdValue,
-//              initialData: 1,
-//              builder: (context, snapshot) => GridView.builder(
-//                itemCount: currencies.length,
-//                shrinkWrap: true,
-//                primary: false,
-//                padding: const EdgeInsets.all(20),
-//                gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
-//                  crossAxisCount: 2,
-//                  crossAxisSpacing: 28.0,
-//                  childAspectRatio: 0.65,
-//                ),
-//                itemBuilder: (BuildContext context, int index) {
-//                  if (exchangeRate != null) {
-//                    print(snapshot.data);
-//                    double convertedValue = snapshot.data *
-//                        exchangeRate["rates"][currencies[index].toUpperCase()];
-//                    return CurrencyBox(convertedValue, currencies[index],
-//                            (_value, _index) => setValue(_value, _index), index);
-//                  } else {
-//                    print("no exchange rate in state");
-//                  }
-//                },
-//              ),
-//            ),
+
+            StreamBuilder(
+              stream: appBloc.usdValue,
+              initialData: 1,
+              builder: (context, usdValueSnapshot) => StreamBuilder(
+                stream: appBloc.getExchangeRates,
+                builder: (context, exchangeRatesSnapshot) => StreamBuilder(
+                  stream: appBloc.getSelectedCurrencies,
+                  builder: (context, selectedCurrenciesSnap) {
+                    if(selectedCurrenciesSnap.hasData && exchangeRatesSnapshot.hasData && usdValueSnapshot.hasData){
+
+                      return StaggeredGridView.countBuilder(
+                          itemCount: selectedCurrenciesSnap.data.length,
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          primary: false,
+                          padding: const EdgeInsets.all(20),
+                          staggeredTileBuilder: (int index) => new StaggeredTile.fit(1),
+                          crossAxisSpacing: 20.0,
+                          mainAxisSpacing: 20.0,
+
+                          itemBuilder: (context, int index) {
+                            double convertedValue = usdValueSnapshot.data *
+                                exchangeRatesSnapshot
+                                    .data["rates"][selectedCurrenciesSnap
+                                    .data[index].toUpperCase()];
+                            return CurrencyBox(
+                                convertedValue,
+                                selectedCurrenciesSnap.data[index],
+                                exchangeRatesSnapshot.data["rates"][selectedCurrenciesSnap.data[index].toUpperCase()]
+                            );
+                          });
+                    } else {
+                      return Loading();
+                    }
+                  }
+                ),
+              ),
+            ),
 
             Container(
               height: 80.0,
@@ -163,23 +130,21 @@ class _MyHomePageState extends State<MyHomePage> {
 class CurrencyBox extends StatelessWidget {
   final double value;
   final String flag;
-  final Function onValueChange;
-  final int index;
+  final double rate;
 
-  CurrencyBox(this.value, this.flag, this.onValueChange, this.index);
+  CurrencyBox(this.value, this.flag, this.rate);
 
   final myController = TextEditingController();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(context) {
 
-//    final Bloc appBloc = BlocProvider.of<Bloc>(context);
+    final StateBloc appBloc = BlocProvider.of<StateBloc>(context);
 
     myController.text = '${value.toStringAsFixed(1)}';
-//    myController.text = '${value}';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 30.0),
+//      margin: const EdgeInsets.only(bottom: 20.0),
       decoration: new BoxDecoration(
         borderRadius: new BorderRadius.all(const Radius.circular(23.0)),
         color: const Color(0xFF464646),
@@ -187,50 +152,43 @@ class CurrencyBox extends StatelessWidget {
       child: Column(
         children: <Widget>[
           Container(
-            width: 150.0,
-//            height: 24.0,
-            margin: const EdgeInsets.only(top: 20.0, bottom: 20.0),
+            alignment: Alignment(-1, 1),
+            margin: const EdgeInsets.only(top: 20.0, bottom: 10, left:10.0),
             child: Image.asset(
               "assets/pngflags/${flag}.png",
-              height: 20.0,
-              width: 20.0,
-              alignment: Alignment(-1, 1),
+              height: 30,
+              width: 30,
             ),
           ),
           Text('${flag}',
               style: TextStyle(
                 color: const Color(0xFFFFFFFF),
-                fontSize: 35.0,
+                fontSize: 42.0,
                 fontWeight: FontWeight.bold,
               )),
           Container(
-            height: 40.0,
+            height: 10.0,
           ),
           Container(
             width: 120,
             child: TextField(
-//              onChanged: (text){
-//                print("changed to $text");
-//                this.onValueChange(text, index);
-//              },
-//              onSubmitted: (value) {
-//                this.onValueChange(value, index);
-//              },
+                  onSubmitted: (value){
+                    appBloc.valueChanged.add(double.parse(value)/rate);
+                  },
 
-              onSubmitted: (value){
-//                appBloc.valueChanged.add(double.parse(value));
-              },
-
-              controller: myController,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFFFFFFF),
-                fontSize: 18,
-              ),
-              keyboardType: TextInputType.text,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(border: InputBorder.none),
-            ),
+                  controller: myController,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: const Color(0xFFFFFFFF),
+                    fontSize: 25,
+                  ),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(border: InputBorder.none),
+                ),
+          ),
+          Container(
+            height: 30.0,
           ),
         ],
       ),
