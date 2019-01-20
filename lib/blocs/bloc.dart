@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:exchange/blocs/bloc_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StateBloc implements BlocBase {
 
@@ -36,7 +37,7 @@ class StateBloc implements BlocBase {
     _modifiedCurrency.listen(_onCurrencyChanged);
   }
 
-  void _onCurrencyChanged(currency){
+  Future _onCurrencyChanged(currency) async {
 
     if(selectedCurrencies.contains(currency)){
       selectedCurrencies.remove(currency);
@@ -46,6 +47,9 @@ class StateBloc implements BlocBase {
 
     modifySelectedCurrencies.add(selectedCurrencies);
     print("updated currencies are ${selectedCurrencies}");
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setStringList("userSavedCurrencies", selectedCurrencies);
   }
 
   Future initialize() async {
@@ -72,8 +76,13 @@ class StateBloc implements BlocBase {
       throw Exception('cant get exchange rates');
     };
 
+    //get selected currencies from shared preferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List savedCurrencies = prefs.getStringList("userSavedCurrencies");
+    selectedCurrencies = savedCurrencies??['cny','aud','usd'];
+
     //define selected currencies
-    selectedCurrencies = ['cny','aud','usd'];
+//    selectedCurrencies = ['cny','aud','usd'];
     modifySelectedCurrencies.add(selectedCurrencies);
     print('selected currencies inititated');
 

@@ -1,11 +1,12 @@
+
 import 'package:exchange/loading.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import './blocs/bloc_provider.dart';
 import './blocs/bloc.dart';
 import 'package:flutter/material.dart';
 import 'settings.dart';
+import  'package:keyboard_actions/keyboard_actions.dart';
 
-FocusNode _nodeText1 = FocusNode();
 
 Future<void> main() async{
   return runApp(
@@ -37,9 +38,9 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("4");
+
     final StateBloc appBloc = BlocProvider.of<StateBloc>(context);
-    print("5");
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F0F0),
       body: GestureDetector(
@@ -142,6 +143,11 @@ class CurrencyBox extends StatelessWidget {
     final StateBloc appBloc = BlocProvider.of<StateBloc>(context);
 
     myController.text = '${value.toStringAsFixed(1)}';
+    FocusNode _inputNode = FocusNode();
+    _inputNode.addListener((){myController.text = '';});
+
+    FocusNode _nodeText2 = FocusNode();
+
 
     return Container(
 //      margin: const EdgeInsets.only(bottom: 20.0),
@@ -160,22 +166,26 @@ class CurrencyBox extends StatelessWidget {
               width: 30,
             ),
           ),
+
           Text('${flag}',
               style: TextStyle(
                 color: const Color(0xFFFFFFFF),
                 fontSize: 42.0,
                 fontWeight: FontWeight.bold,
               )),
+
           Container(
             height: 10.0,
           ),
+
           Container(
             width: 120,
             child: TextField(
+
                   onSubmitted: (value){
                     appBloc.valueChanged.add(double.parse(value)/rate);
                   },
-
+                  focusNode: _inputNode,
                   controller: myController,
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -187,6 +197,7 @@ class CurrencyBox extends StatelessWidget {
                   decoration: InputDecoration(border: InputBorder.none),
                 ),
           ),
+
           Container(
             height: 30.0,
           ),
